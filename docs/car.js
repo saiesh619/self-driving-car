@@ -4,6 +4,8 @@ class Car{
         this.y=y;
         this.width=width;
         this.height=height;
+        this.color = color;
+        this.type = controlType;
 
         this.speed=0;
         this.acceleration=0.2;
@@ -42,18 +44,35 @@ class Car{
         }
     }
 
+    load(info){
+      this.brain = info.brain;
+      this.maxSpeed = info.maxSpeed;
+      this.friction = info.friction;
+      this.acceleration = info.acceleration;
+      this.sensor.rayCount = info.sensor.rayCount;
+      this.sensor.raySpread = info.sensor.raySpread;
+      this.sensor.rayLength = info.sensor.rayLength;
+      this.sensor.rayOffset = info.sensor.rayOffset;
+    }
+
     update(roadBorders,traffic){
         if(!this.damaged){
             this.#move();
             this.fittness += this.speed;
             this.polygon=this.#createPolygon();
             this.damaged=this.#assessDamage(roadBorders,traffic);
+            if(this.damaged){
+               this.speed=0;
+               if(this.type == "KEYS"){
+                  explode();
+               }
+            }
         }
         if(this.sensor){
             this.sensor.update(roadBorders,traffic);
             const offsets=this.sensor.readings.map(
                 s=>s==null?0:1-s.offset
-            );
+            ).concat([this.speed/this.maxSpeed]);
             const outputs=NeuralNetwork.feedForward(offsets,this.brain);
 
             if(this.useBrain){
@@ -62,6 +81,11 @@ class Car{
                 this.controls.right=outputs[2];
                 this.controls.reverse=outputs[3];
             }
+        }
+        if (this.engine) {
+            const percent = Math.abs(this.speed / this.maxSpeed);
+            this.engine.setVolume(percent);
+            this.engine.setPitch(percent);
         }
     }
 
@@ -143,7 +167,7 @@ class Car{
 
     draw(ctx,drawSensor=false){
         if(this.sensor && drawSensor){
-            this.sensor.draw(ctx);
+            //this.sensor.draw(ctx);
         }
 
         ctx.save();
